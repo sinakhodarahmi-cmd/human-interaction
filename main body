@@ -1,1 +1,98 @@
+import openai
+from textblob import TextBlob
+import sys
+
+class SentimentAwareAI:
+    """
+    A framework for Human-AI Interaction that implements 
+    Dynamic Persona Modulation based on user sentiment.
+    """
+
+    def __init__(self, api_key):
+        self.api_key = api_key
+        openai.api_key = self.api_key
+        # Define the persona mapping dictionary
+        self.persona_map = {
+            "positive": "You are an enthusiastic, high-energy, and joyful assistant. Match the user's positive vibe!",
+            "negative": "You are a calm, empathetic, and soothing assistant. Use gentle language to help calm the user down.",
+            "neutral": "You are a professional, efficient, and neutral assistant. Keep responses concise and objective."
+        }
+
+    def _analyze_sentiment(self, text):
+        """
+        Analyzes the polarity of the input text.
+        Returns: (mood_category, polarity_score)
+        """
+        analysis = TextBlob(text)
+        score = analysis.sentiment.polarity
+        
+        if score > 0.3:
+            return "positive", score
+        elif score < -0.3:
+            return "negative", score
+        else:
+            return "neutral", score
+
+    def get_adaptive_response(self, user_input):
+        """
+        The core pipeline: Perception -> Mapping -> Generation.
+        """
+        # Step 1: Perception (Sentiment Analysis)
+        mood, score = self._analyze_sentiment(user_input)
+        
+        # Step 2: Mapping (Persona Selection)
+        selected_persona = self.persona_map[mood]
+
+        # Step 3: Generation (LLM Interaction)
+        try:
+            print(f"\n[System Log] Detected Mood: {mood.upper()} (Score: {score:.2f})")
+            print(f"[System Log] Applying Persona: {selected_persona[:50]}...")
+
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": selected_persona},
+                    {"role": "user", "content": user_input}
+                ],
+                temperature=0.7 # Balanced creativity and coherence
+            )
+            
+            return response.choices[0].message.content
+
+        except openai.error.AuthenticationError:
+            return "Error: Invalid OpenAI API Key. Please check your configuration."
+        except Exception as e:
+            return f"An unexpected error occurred: {e}"
+
+def main():
+    # Replace 'your-api-key-here' with your actual OpenAI API Key
+    API_KEY = "your-api-key-here"
+    
+    if API_KEY == "your-api-key-here":
+        print("❌ ERROR: Please provide a valid OpenAI API Key in the code.")
+        sys.exit()
+
+    ai_agent = SentimentAwareAI(API_KEY)
+
+    print("--- 🤖 Empathic AI Agent Initialized ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    while True:
+        user_text = input("👤 You: ")
+        
+        if user_text.lower() in ['exit', 'quit']:
+            print("👋 Terminating session. Goodbye!")
+            break
+        
+        if not user_text.strip():
+            continue
+
+        # Get the response from the agent
+        ai_response = ai_agent.get_adaptive_response(user_text)
+        
+        print(f"🤖 AI: {ai_response}")
+        print("-" * 30)
+
+if __name__ == "__main__":
+    main()
 
